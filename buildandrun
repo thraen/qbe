@@ -1,0 +1,5 @@
+#!/bin/sh
+
+echo -e '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
+
+ghc -XFlexibleInstances *hs && ./main  2>&1 
