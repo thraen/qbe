@@ -1,5 +1,5 @@
 #!/bin/sh
 
-echo -e '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
+echo -e '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
 
 ghc -XFlexibleContexts -XFlexibleInstances *hs && ./main  2>&1 
