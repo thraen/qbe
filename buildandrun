@@ -2,4 +2,4 @@
 
 echo -e '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
 
-ghc -XFlexibleInstances *hs && ./main  2>&1 
+ghc -XFlexibleContexts -XFlexibleInstances *hs && ./main  2>&1 
