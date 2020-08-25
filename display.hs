@@ -5,14 +5,14 @@ import Graphics.UI.GLUT hiding (translate, scale, rotate)
 import Control.Monad
 import Data.IORef
 
-points :: Int -> [(GLfloat,GLfloat,GLfloat)]
+points :: Int -> [(Float,Float,Float)]
 points n = [ (sin (2*pi*k/n'), cos (2*pi*k/n'), 0) | k <- [1..n'] ]
    where n' = fromIntegral n
 
-myPoints :: [(GLfloat,GLfloat,GLfloat)]
+myPoints :: [(Float,Float,Float)]
 myPoints = [ (sin (2*pi*k/12), cos (2*pi*k/12), 0) | k <- [1..12] ]
 
-type Spin = (GLfloat, (GLfloat, GLfloat, GLfloat)) 
+type Spin = (Float, (Float, Float, Float)) 
 
 spinit :: Spin -> IO()
 spinit (dv, w) = do
@@ -37,10 +37,9 @@ display spin_ = do
         vertfromVec (snd spin)
     spinit spin
 
-
     orthonormal
 
-    forM_ qp2 (draw_thing cube 0.1)
+    forM_ cube_ (draw_thing cubelet 0.6)
     swapBuffers
 
 -- display = do 

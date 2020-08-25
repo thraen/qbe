@@ -16,8 +16,9 @@ main = do
     normalizeWindowCoo_ <- newIORef (normalizeWindowCoo (Position 0 0)) 
     reshapeCallback $= Just (reshape normalizeWindowCoo_)
 
-    spin_            <- newIORef (0.0, (0.0,0.0,0.0))
-    lastMouse_       <- newIORef (Position 0 0)
+    spin_      <- newIORef (0.0, (0.0,0.0,0.0))
+    lastMouse_ <- newIORef (Position 0 0)
+    t          <- newIORef (0.0)
 
     keyboardMouseCallback $= Just (keyboardMouse lastMouse_ normalizeWindowCoo_ spin_)
 
@@ -72,7 +73,7 @@ updateSpinFromMouseMotion normalize_ lastMouse_ mouse spin_ = do
 keyboardMouse :: IORef Position -> IORef CoordinateNormalization -> IORef Spin -> KeyboardMouseCallback
 keyboardMouse lastMouse_ normalize_ spin_ key Down modifier mouse = case key of
     (MouseButton LeftButton) -> do
-        putStrLn "down"
+--         putStrLn "mouse down"
 --         updateSpinFromMouseMotion normalize_ lastMouse_ mouse spin_
         lastMouse_ $=! mouse
         spin_      $=! (0, (0,0,0))
@@ -94,7 +95,7 @@ idle :: IORef Spin -> IdleCallback
 idle spin_ = do
 --     Spin $~! (
 --     Spin $~! (+ 2)
-    putStrLn "idle"
+--     putStrLn "idle"
     postRedisplay Nothing
 
 
