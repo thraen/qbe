@@ -119,7 +119,6 @@ init__ = do
     loadIdentity
     scale 0.25
 
--- display spin_ = preservingMatrix $ do
 display spin_ = do
     clear [ColorBuffer, DepthBuffer]
     spin <- get spin_

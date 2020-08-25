@@ -161,13 +161,6 @@ g_=( 1,-1, 1)
 h_=(-1,-1, 1)
 
 
-cube :: [ Pose ]
-cube = zip [a_, b_, c_, d_, e_, f_, g_, h_] (replicate 8 zero)
-
--- fuck (q:qs) = (protz 0.2 q) : qs
--- fuck (q:qs) = (protz (pi/2-0.1) q) : qs
--- cube_ = fuck cube
-
 rotz :: Float -> Fvector -> Fvector
 rotz α (x,y,z) = (x', y', z')
     where   x' = ( cos α)*x + (-sin α)*y
@@ -206,5 +199,13 @@ qroty α [a, b, c, d,   e  ,   f  ,   g  ,   h  ] =
 qrotx α [a,   b  ,   c  , d, e,   f  ,   g,   h] = 
         [a, (ρ b), (ρ c), d, e, (ρ f), (ρ g), h]
     where ρ = protx α
+
+
+cube :: [ Pose ]
+cube = zip [a_, b_, c_, d_, e_, f_, g_, h_] (replicate 8 zero)
+
+-- fuck (q:qs) = (protz 0.2 q) : qs
+-- fuck (q:qs) = (protz (pi/2-0.1) q) : qs
+-- cube_ = fuck cube
 
 cube_ = qrotx 0.85 cube
