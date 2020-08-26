@@ -67,7 +67,7 @@ yellow :: Color3 Float
 yellow = Color3 1 1 0
 
 lila :: Color3 Float
-lila = Color3 1 0 1
+lila = Color3 1 0.5 0
 
 euler_rotate :: Fvector -> IO()
 euler_rotate (ax, ay, az) = do
@@ -115,11 +115,11 @@ face w col = renderPrimitive Quads $ do
 
 vorne = preservingMatrix $ do
     translate ez
-    face 1.0 blue
+    face 1.0 green
 
 hinten = preservingMatrix $ do
     translate $ -ez
-    face 1.0 white
+    face 1.0 blue
 
 rechts = preservingMatrix $ do
     translate ex
@@ -134,7 +134,7 @@ links = preservingMatrix $ do
 unten = preservingMatrix $ do
     translate (-ey)
     rotate 90 ex
-    face 1.0 green
+    face 1.0 white
 
 oben = preservingMatrix $ do
     translate ey
@@ -188,24 +188,29 @@ proty δ (v, (α, β, γ)) = ( roty δ v, ( α , β+ 180*δ/pi , γ ) )
 protx :: Float -> Pose -> Pose
 protx δ (v, (α, β, γ)) = ( rotx δ v, ( α+ 180*δ/pi , β , γ ) )
 
-qrotz α [  a  ,   b  , c, d,   e  ,   f  , g, h] = 
-        [(ρ a), (ρ b), c, d, (ρ e), (ρ f), g, h]
-    where ρ = protz α
+-- is_front :: Pose -> Bool
+is_front ((x,y,z), o) = z < 0
+-- is_lower :: Pose -> Bool
+is_lower ((x,y,z), o) = y < 0
+-- is_right :: Pose -> Bool
+is_right ((x,y,z), o) = x > 0
 
-qroty α [a, b, c, d,   e  ,   f  ,   g  ,   h  ] = 
-        [a, b, c, d, (ρ e), (ρ f), (ρ g), (ρ h)]
-    where ρ = proty α
+rotx_right α p
+    | is_right p = protx α p
+    | otherwise  = p
 
-qrotx α [a,   b  ,   c  , d, e,   f  ,   g,   h] = 
-        [a, (ρ b), (ρ c), d, e, (ρ f), (ρ g), h]
-    where ρ = protx α
+roty_lower α p
+    | is_lower p = proty α p
+    | otherwise  = p
 
+rotz_front α p
+    | is_front p = protz α p
+    | otherwise  = p
 
-cube :: [ Pose ]
-cube = zip [a_, b_, c_, d_, e_, f_, g_, h_] (replicate 8 zero)
+qrotx_ α qs = map (rotx_right α) qs
+qroty_ α qs = map (roty_lower α) qs
+qrotz_ α qs = map (rotz_front α) qs 
 
--- fuck (q:qs) = (protz 0.2 q) : qs
--- fuck (q:qs) = (protz (pi/2-0.1) q) : qs
--- cube_ = fuck cube
+init_cube :: [ Pose ]
+init_cube = zip [a_, b_, c_, d_, e_, f_, g_, h_] (replicate 8 zero)
 
-cube_ = qrotx 0.85 cube

@@ -4,7 +4,7 @@ import Control.Monad
 
 import Graphics.UI.GLUT hiding (translate, scale, rotate)
 
-type Spin = (GLfloat, (GLfloat, GLfloat, GLfloat)) 
+type Spin = (Float, (Float, Float, Float)) 
 
 main :: IO ()
 main = do
@@ -20,8 +20,9 @@ main = do
 
     spin_      <- newIORef (0.0, (0.0,0.0,0.0))
     lastMouse_ <- newIORef (Position 0 0)
+    cube_      <- newIORef (init_cube)
 
-    keyboardMouseCallback $= Just (keyboardMouse lastMouse_ normalizeWindowCoo_ spin_)
+    keyboardMouseCallback $= Just (keyboardMouse lastMouse_ cube_ spin_)
 
 --     passiveMotionCallback $= Just (passiveMotion lastMouse_ normalizeWindowCoo_ spin_)
 
@@ -29,11 +30,11 @@ main = do
 
     idleCallback   $= Just (idle spin_)
 
-    displayCallback $= display spin_
+    displayCallback $= display spin_ cube_
     init__
     mainLoop
 
-type CoordinateNormalization = Position -> (GLfloat, GLfloat)
+type CoordinateNormalization = Position -> (Float, Float)
 
 normalizeWindowCoo :: Position -> CoordinateNormalization
 normalizeWindowCoo (Position w h) (Position x y) = 
@@ -48,8 +49,8 @@ reshape normalize_ (Size w h) = do
 --     putStrLn $ show size
     viewport  $= (Position 0 0, Size w h)
 
-type Fvector  = (GLfloat, GLfloat, GLfloat)
-type Fvec2    = (GLfloat, GLfloat)
+type Fvector  = (Float, Float, Float)
+type Fvec2    = (Float, Float)
 type NormalMouseCoo = Fvec2
 
 dist (x,y) (v,w) = sqrt ((x-v)^2 + (w-y)^2)
@@ -74,14 +75,26 @@ updateSpinFromMouseMotion normalize_ lastMouse_ mouse spin_ = do
 
         spin_ $=! spinFromMouseMotion nLastMouseCoo nMouseCoo
 
-keyboardMouse :: IORef Position -> IORef CoordinateNormalization -> IORef Spin -> KeyboardMouseCallback
-keyboardMouse lastMouse_ normalize_ spin_ key Down modifier mouse = case key of
+
+keyboardMouse :: IORef Position -> 
+                 IORef [Pose] -> 
+                 IORef Spin -> KeyboardMouseCallback
+
+keyboardMouse lastMouse_ cube_ spin_ key Down modifier mouse = case key of
     (MouseButton LeftButton) -> do
 --         putStrLn "mouse down"
---         updateSpinFromMouseMotion normalize_ lastMouse_ mouse spin_
         lastMouse_ $=! mouse
         spin_      $=! (0, (0,0,0))
         postRedisplay Nothing
+    -- this strange operator $~! gets the io ref, applies the function on the 
+    -- right to it and updates the ref with the result
+    (Char 'r') -> cube_ $~! qrotx_ (-pi/4)
+    (Char 'R') -> cube_ $~! qrotx_ ( pi/4)
+    (Char 'u') -> cube_ $~! qroty_ ( pi/4)
+    (Char 'U') -> cube_ $~! qroty_ (-pi/4)
+    (Char 'l') -> cube_ $~! qrotz_ ( pi/4)
+    (Char 'L') -> cube_ $~! qrotz_ (-pi/4)
+
     _ -> return ()
 
 keyboardMouse _ _ spin_ (MouseButton LeftButton) Up _ _ = do
@@ -89,11 +102,13 @@ keyboardMouse _ _ spin_ (MouseButton LeftButton) Up _ _ = do
     
 keyboardMouse _ _ _ _ _ _ _ = return ()
 
+
 passiveMotion :: IORef Position -> IORef CoordinateNormalization -> IORef Spin -> MotionCallback
 passiveMotion lastMouse_ normalize_ spin_ mouse = do
     updateSpinFromMouseMotion normalize_ lastMouse_ mouse spin_
     lastMouse_ $=! mouse
     postRedisplay Nothing
+
 
 idle :: IORef Spin -> IdleCallback
 idle spin_ = do
@@ -102,13 +117,6 @@ idle spin_ = do
 --     putStrLn "idle"
     postRedisplay Nothing
 
-
--- points :: Int -> [(Float,Float,Float)]
--- points n = [ (sin (2*pi*k/n'), cos (2*pi*k/n'), 0) | k <- [1..n'] ]
---    where n' = fromIntegral n
-
--- myPoints :: [(Float,Float,Float)]
--- myPoints = [ (sin (2*pi*k/12), cos (2*pi*k/12), 0) | k <- [1..12] ]
 
 spinit :: Spin -> IO()
 spinit (dv, w) = do
@@ -119,10 +127,13 @@ init__ = do
     loadIdentity
     scale 0.25
 
-display spin_ = do
+
+display :: IORef Spin -> IORef [Pose] -> IO()
+display spin_ cube_ = do
     clear [ColorBuffer, DepthBuffer]
+
+    -- angle of view
     spin <- get spin_
-    -- viewing angle
 
     renderPrimitive Lines $ do
         vertfromVec (0, 0, 0)
@@ -133,17 +144,12 @@ display spin_ = do
 
     t <- elapsedTime
 --     let fu = fromIntegral t
-    let fu = sin (0.0008* (fromIntegral t))
+--     let fu = 0.8 + 0.1*sin (0.0008* (fromIntegral t))
 
---     forM_ cube_ (draw_thing cubelet 0.6 )
-    forM_ cube_ (draw_thing cubelet fu )
+    cube <- get cube_
+
+    forM_ cube (draw_thing cubelet 0.7 )
 
     swapBuffers
 
--- display = do 
---   clear [ColorBuffer]
---   renderPrimitive Points $
---      mapM_ (\(x, y, z) -> vertex $ Vertex3 x y z) myPoints
---   flush
- 
 
