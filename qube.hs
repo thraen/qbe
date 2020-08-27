@@ -1,5 +1,8 @@
 module Cube where
 
+-- import Data.Matrix
+-- libghc-hmatrix-dev
+
 -- data MatrixComponent a => Pose a 
 --     where
 --     transpose
@@ -101,7 +104,7 @@ draw_thing thing scl (koo, ori) = preservingMatrix $ do
     scale scl
 --     putStrLn $ show ori
 --     putStrLn $ show koo
-    putStrLn $ " -- \n" ++ show (koo, ori)
+    putStrLn $ show (koo, ori)
     euler_rotate ori
     thing
 
@@ -183,7 +186,7 @@ protz :: Float -> Pose -> Pose
 protz δ (v, (α, β, γ)) = ( rotz δ v, ( α , β , γ+ 180*δ/pi ) )
 
 proty :: Float -> Pose -> Pose
-proty δ (v, (α, β, γ)) = ( roty δ v, ( α , β+ 180*δ/pi , γ ) )
+proty δ (v, (α, β, γ)) = ( roty δ v, ( α , β- 180*δ/pi , γ ) )
 
 protx :: Float -> Pose -> Pose
 protx δ (v, (α, β, γ)) = ( rotx δ v, ( α+ 180*δ/pi , β , γ ) )

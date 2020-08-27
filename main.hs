@@ -88,12 +88,21 @@ keyboardMouse lastMouse_ cube_ spin_ key Down modifier mouse = case key of
         postRedisplay Nothing
     -- this strange operator $~! gets the io ref, applies the function on the 
     -- right to it and updates the ref with the result
-    (Char 'r') -> cube_ $~! qrotx_ (-pi/4)
-    (Char 'R') -> cube_ $~! qrotx_ ( pi/4)
-    (Char 'u') -> cube_ $~! qroty_ ( pi/4)
-    (Char 'U') -> cube_ $~! qroty_ (-pi/4)
-    (Char 'l') -> cube_ $~! qrotz_ ( pi/4)
-    (Char 'L') -> cube_ $~! qrotz_ (-pi/4)
+--     (Char 'r') -> cube_ $~! qrotx_ (-pi/4)
+--     (Char 'R') -> cube_ $~! qrotx_ ( pi/4)
+--     (Char 'u') -> cube_ $~! qroty_ ( pi/4)
+--     (Char 'U') -> cube_ $~! qroty_ (-pi/4)
+--     (Char 'l') -> cube_ $~! qrotz_ ( pi/4)
+--     (Char 'L') -> cube_ $~! qrotz_ (-pi/4)
+
+    (Char 'r') -> cube_ $~! qrotx_ (-pi/8)
+    (Char 'R') -> cube_ $~! qrotx_ ( pi/8)
+    (Char 'u') -> cube_ $~! qroty_ ( pi/8)
+    (Char 'U') -> cube_ $~! qroty_ (-pi/8)
+    (Char 'l') -> cube_ $~! qrotz_ ( pi/8)
+    (Char 'L') -> cube_ $~! qrotz_ (-pi/8)
+    (Char ' ') -> cube_ $=! init_cube
+
 
     _ -> return ()
 
@@ -148,8 +157,7 @@ display spin_ cube_ = do
 
     cube <- get cube_
 
-    forM_ cube (draw_thing cubelet 0.7 )
+    putStrLn "--"
+    forM_ cube (draw_thing cubelet 0.8 )
 
     swapBuffers
-
-
