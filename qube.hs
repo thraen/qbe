@@ -1,6 +1,6 @@
 module Cube where
 
--- import Data.Matrix
+import Data.Matrix
 -- libghc-hmatrix-dev
 
 -- data MatrixComponent a => Pose a 
@@ -13,89 +13,67 @@ import Graphics.GL
 
 import Graphics.UI.GLUT hiding (translate, scale, rotate)
 
-instance Num t => Num (t,t,t) where negate (a,b,c) = (negate a, negate b, negate c)
-
-type Fvector     = (Float, Float, Float)
-type Orientation = Fvector
 
 type ColorF   = Color3 Float
 
-type Pose     = (Fvector, Orientation)
+type Pose     = (MMatrix, MMatrix)
 
-ex :: Fvector
-ex  = (1,0,0)
-ey :: Fvector
-ey  = (0,1,0)
-ez :: Fvector
-ez  = (0,0,1)
+-- type GLMatrix = Graphics.UI.GLUT.Matrix
+type MMatrix  = Data.Matrix.Matrix Float
 
-zero :: Fvector
-zero = (0, 0, 0)
+ex  = fromList 4 1 [ 1, 0, 0, 1 ]
+ey  = fromList 4 1 [ 0, 1, 0, 1 ]
+ez  = fromList 4 1 [ 0, 0, 1, 1 ]
 
--- ox :: Fvector
--- ox  = (90, 0, 0)
--- oy :: Fvector
--- oy  = ( 0,90, 0)
--- oz :: Fvector
--- oz  = ( 0, 0,90)
+-- oberer ring
+a_ = fromList 4 1 [ -1, 1,-1, 1 ]
+b_ = fromList 4 1 [  1, 1,-1, 1 ]
+c_ = fromList 4 1 [  1, 1, 1, 1 ]
+d_ = fromList 4 1 [ -1, 1, 1, 1 ]
 
-base :: [ Fvector ]
-base = [ ex, ey, ez ]
+-- unterer ring
+e_ = fromList 4 1 [ -1,-1,-1, 1 ]
+f_ = fromList 4 1 [  1,-1,-1, 1 ]
+g_ = fromList 4 1 [  1,-1, 1, 1 ]
+h_ = fromList 4 1 [ -1,-1, 1, 1 ]
 
-vertexv :: Fvector ->  IO ()
-vertexv (x,y,z) = vertex $ Vertex3 x y z
 
-translate :: Fvector -> IO()
-translate (x,y,z) = glTranslatef x y z
+
+translate :: MMatrix -> IO()
+translate m = glTranslatef x y z
+    where [x, y, z, _ ] = toList m
 
 scale :: Float -> IO()
 scale s = glScalef s s s
 
-rotate :: Float -> Fvector -> IO()
-rotate a (x,y,z) = glRotatef a x y z
+rotate :: Float -> MMatrix -> IO()
+rotate a m = glRotatef a x y z
+    where [x, y, z, _ ] = toList m
 
-white ::Color3 Float
-white = Color3 1 1 1
-
-red :: Color3 Float
-red = Color3 1 0 0
-
-blue :: Color3 Float
-blue = Color3 0 0 1
-
-green :: Color3 Float
-green = Color3 0 1 0
-
-yellow :: Color3 Float
+white  = Color3 1 1 1
+red    = Color3 1 0 0
+blue   = Color3 0 0 1
+green  = Color3 0 1 0
 yellow = Color3 1 1 0
+orange = Color3 1 0.5 0
 
-lila :: Color3 Float
-lila = Color3 1 0.5 0
-
-euler_rotate :: Fvector -> IO()
-euler_rotate (ax, ay, az) = do
---     putStrLn $ show (ax,ay,az)
-    rotate ax ex
-    rotate ay ey
-    rotate az ez
-
--- vertfromVec :: Fvector -> Vertex3 Float
-vertfromVec (a,b,c) = glVertex3f a b c
-
+transform :: MMatrix -> IO()
+transform m = do
+    tf <- (newMatrix RowMajor (toList m)) :: IO(GLmatrix Float)
+    multMatrix tf
+    
 orthonormal :: IO()
 orthonormal = preservingMatrix $ do
     renderPrimitive Lines $ do
         color red
-        vertfromVec (0, 0, 0)
-        vertfromVec ey
+        glVertex3f 0 0 0.0
+        glVertex3f 0 1 0.0
         color blue
-        vertfromVec (0, 0, 0)
-        vertfromVec ex
+        glVertex3f 0 0 0.0
+        glVertex3f 1 0 0.0
         color white
-        vertfromVec (0, 0, 0)
-        vertfromVec ez
---         vertex $ Vertex3 1 2 (3::Float)
---         vertex $ Vertex3 5 6 7
+        glVertex3f 0 0 0.0
+        glVertex3f 0 0 1.0
 
 
 draw_thing :: IO() -> Float -> Pose -> IO()
@@ -104,8 +82,7 @@ draw_thing thing scl (koo, ori) = preservingMatrix $ do
     scale scl
 --     putStrLn $ show ori
 --     putStrLn $ show koo
-    putStrLn $ show (koo, ori)
-    euler_rotate ori
+    transform ori
     thing
 
 face :: Float -> ColorF -> IO ()
@@ -132,7 +109,7 @@ rechts = preservingMatrix $ do
 links = preservingMatrix $ do
     translate $ -ex
     rotate 90 ey
-    face 1.0 lila
+    face 1.0 orange
 
 unten = preservingMatrix $ do
     translate (-ey)
@@ -152,51 +129,39 @@ cubelet = preservingMatrix $ do
     oben
     unten
 
--- oberer ring
-a_=(-1, 1,-1)
-b_=( 1, 1,-1)
-c_=( 1, 1, 1)
-d_=(-1, 1, 1)
--- unterer ring
-e_=(-1,-1,-1)
-f_=( 1,-1,-1)
-g_=( 1,-1, 1)
-h_=(-1,-1, 1)
+
+rz :: Float -> MMatrix
+rz α = fromList 4 4 [ ( cos α), (-sin α), 0, 0      ::Float,
+                      ( sin α), ( cos α), 0, 0,
+                          0   ,     0   , 1, 0, 
+                          0   ,     0   , 0, 1  ]
+
+ry :: Float -> MMatrix
+ry α = fromList 4 4 [ ( cos α), 0, (-sin α), 0, 
+                          0   , 1,     0   , 0      ::Float, 
+                      ( sin α), 0, ( cos α), 0, 
+                          0   , 0,     0   , 1  ]
 
 
-rotz :: Float -> Fvector -> Fvector
-rotz α (x,y,z) = (x', y', z')
-    where   x' = ( cos α)*x + (-sin α)*y
-            y' = ( sin α)*x + ( cos α)*y
-            z' = z
+rx :: Float -> MMatrix
+rx α = fromList 4 4 [ 1,     0   ,     0    , 0     ::Float,
+                      0, ( cos α), (-sin α) , 0, 
+                      0, ( sin α), ( cos α) , 0, 
+                      0,     0   ,     0    , 1  ]
 
-roty :: Float -> Fvector -> Fvector
-roty α (x,y,z) = (x', y', z')
-    where   x' = ( cos α)*x + (-sin α)*z
-            y' = y
-            z' = ( sin α)*x + ( cos α)*z
-
-rotx :: Float -> Fvector -> Fvector
-rotx α (x,y,z) = (x', y', z')
-    where   x' = x
-            y' = ( cos α)*y + (-sin α)*z
-            z' = ( sin α)*y + ( cos α)*z
 
 protz :: Float -> Pose -> Pose
-protz δ (v, (α, β, γ)) = ( rotz δ v, ( α , β , γ+ 180*δ/pi ) )
+protz δ (v, m) = ( (rz δ) * v, (rz δ) * m )
 
 proty :: Float -> Pose -> Pose
-proty δ (v, (α, β, γ)) = ( roty δ v, ( α , β- 180*δ/pi , γ ) )
+proty δ (v, m) = ( (ry δ) * v, (ry δ) * m )
 
-protx :: Float -> Pose -> Pose
-protx δ (v, (α, β, γ)) = ( rotx δ v, ( α+ 180*δ/pi , β , γ ) )
+protx :: Float -> Pose -> Pose 
+protx δ (v, m) = ( (rx δ) * v, (rx δ) * m )
 
--- is_front :: Pose -> Bool
-is_front ((x,y,z), o) = z < 0
--- is_lower :: Pose -> Bool
-is_lower ((x,y,z), o) = y < 0
--- is_right :: Pose -> Bool
-is_right ((x,y,z), o) = x > 0
+is_front (v, o) = z < 0 where z = v!(3,1)
+is_lower (v, o) = y < 0 where y = v!(2,1)
+is_right (v, o) = x > 0 where x = v!(1,1)
 
 rotx_right α p
     | is_right p = protx α p
@@ -215,5 +180,5 @@ qroty_ α qs = map (roty_lower α) qs
 qrotz_ α qs = map (rotz_front α) qs 
 
 init_cube :: [ Pose ]
-init_cube = zip [a_, b_, c_, d_, e_, f_, g_, h_] (replicate 8 zero)
+init_cube = zip [a_, b_, c_, d_, e_, f_, g_, h_] (replicate 8 (identity 4))
 

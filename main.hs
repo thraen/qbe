@@ -2,9 +2,11 @@ import Data.IORef
 import Cube
 import Control.Monad
 
+import Data.Matrix
+
 import Graphics.UI.GLUT hiding (translate, scale, rotate)
 
-type Spin = (Float, (Float, Float, Float)) 
+type Spin = MMatrix
 
 main :: IO ()
 main = do
@@ -18,8 +20,9 @@ main = do
     normalizeWindowCoo_ <- newIORef (normalizeWindowCoo (Position 0 0)) 
     reshapeCallback $= Just (reshape normalizeWindowCoo_)
 
-    spin_      <- newIORef (0.0, (0.0,0.0,0.0))
+    spin_      <- newIORef $ identity 4
     lastMouse_ <- newIORef (Position 0 0)
+
     cube_      <- newIORef (init_cube)
 
     keyboardMouseCallback $= Just (keyboardMouse lastMouse_ cube_ spin_)
@@ -55,25 +58,19 @@ type NormalMouseCoo = Fvec2
 
 dist (x,y) (v,w) = sqrt ((x-v)^2 + (w-y)^2)
 
--- (-) :: Fvec2 -> Fvec2
--- (-) (x,y) (v,w) = (x-y, v-w)
-
-spinFromMouseMotion :: NormalMouseCoo -> NormalMouseCoo -> Spin
-spinFromMouseMotion (lx,ly) (x,y) = (d, v) where d = 5*dist (lx, ly) (x, y)
-                                                 v = (ly-y, x-lx, 0.0)
-    
+spin_from_mouse :: NormalMouseCoo -> NormalMouseCoo -> Spin
+spin_from_mouse (lx,ly) (x,y) = ry_ * rx_
+    -- x, y are window coordinates
+    where rx_ = rx $ (y-ly) * 0.2
+          ry_ = ry $ (x-lx) * 0.2
 
 
-updateSpinFromMouseMotion :: IORef CoordinateNormalization -> IORef Position -> Position -> IORef Spin -> IO ()
-updateSpinFromMouseMotion normalize_ lastMouse_ mouse spin_ = do
+update_spin :: IORef CoordinateNormalization -> IORef Position -> Position -> IORef Spin -> IO ()
+update_spin normalize_ lastMouse_ mouse spin_ = do
         normalize <- get normalize_
         lastMouse <- get lastMouse_
-        let nLastMouseCoo  = normalize lastMouse
-        let nMouseCoo      = normalize mouse
-
---         putStrLn $ show nMouseCoo ++ show nLastMouseCoo
-
-        spin_ $=! spinFromMouseMotion nLastMouseCoo nMouseCoo
+--         putStrLn $ show normal_mouse ++ show normal_lastmouse
+        spin_ $=! spin_from_mouse (normalize lastMouse) (normalize mouse)
 
 
 keyboardMouse :: IORef Position -> 
@@ -82,19 +79,12 @@ keyboardMouse :: IORef Position ->
 
 keyboardMouse lastMouse_ cube_ spin_ key Down modifier mouse = case key of
     (MouseButton LeftButton) -> do
---         putStrLn "mouse down"
         lastMouse_ $=! mouse
-        spin_      $=! (0, (0,0,0))
+        spin_      $=! identity 4
         postRedisplay Nothing
-    -- this strange operator $~! gets the io ref, applies the function on the 
-    -- right to it and updates the ref with the result
---     (Char 'r') -> cube_ $~! qrotx_ (-pi/4)
---     (Char 'R') -> cube_ $~! qrotx_ ( pi/4)
---     (Char 'u') -> cube_ $~! qroty_ ( pi/4)
---     (Char 'U') -> cube_ $~! qroty_ (-pi/4)
---     (Char 'l') -> cube_ $~! qrotz_ ( pi/4)
---     (Char 'L') -> cube_ $~! qrotz_ (-pi/4)
 
+    -- operator $~! gets the io ref, applies the function on the 
+    -- right to it and updates the ref with the result
     (Char 'r') -> cube_ $~! qrotx_ (-pi/8)
     (Char 'R') -> cube_ $~! qrotx_ ( pi/8)
     (Char 'u') -> cube_ $~! qroty_ ( pi/8)
@@ -114,23 +104,15 @@ keyboardMouse _ _ _ _ _ _ _ = return ()
 
 passiveMotion :: IORef Position -> IORef CoordinateNormalization -> IORef Spin -> MotionCallback
 passiveMotion lastMouse_ normalize_ spin_ mouse = do
-    updateSpinFromMouseMotion normalize_ lastMouse_ mouse spin_
+    update_spin normalize_ lastMouse_ mouse spin_
     lastMouse_ $=! mouse
     postRedisplay Nothing
 
 
 idle :: IORef Spin -> IdleCallback
 idle spin_ = do
---     Spin $~! (
---     Spin $~! (+ 2)
---     putStrLn "idle"
     postRedisplay Nothing
 
-
-spinit :: Spin -> IO()
-spinit (dv, w) = do
---     putStrLn $ "spinit " ++ show dv ++ " about " ++ show w
-    rotate dv w
 
 init__ = do
     loadIdentity
@@ -143,11 +125,7 @@ display spin_ cube_ = do
 
     -- angle of view
     spin <- get spin_
-
-    renderPrimitive Lines $ do
-        vertfromVec (0, 0, 0)
-        vertfromVec (snd spin)
-    spinit spin
+    transform spin
 
     orthonormal
 
@@ -157,7 +135,8 @@ display spin_ cube_ = do
 
     cube <- get cube_
 
-    putStrLn "--"
+--     cubelet
+--     putStrLn "--"
     forM_ cube (draw_thing cubelet 0.8 )
 
     swapBuffers

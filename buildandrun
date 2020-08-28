@@ -1,5 +1,8 @@
 #!/bin/sh
 
+## cabal update
+## cabal install matrix
+
 echo -e '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
 
 ghc -XFlexibleContexts -XFlexibleInstances *hs && ./main  2>&1 
