@@ -1,4 +1,6 @@
 import Data.IORef
+import Data.Maybe
+
 import Cube
 import Control.Monad
 
@@ -95,7 +97,7 @@ keyboardMouse :: IORef Position ->
                  IORef Spin -> KeyboardMouseCallback
 
 keyboardMouse lastMouse_ cube_ inputs_ spin_ key Down modifier mouse = case key of
-    (MouseButton LeftButton) -> do
+    MouseButton LeftButton -> do
         lastMouse_ $=! mouse
         spin_      $=! identity 4
         postRedisplay Nothing
@@ -117,7 +119,8 @@ passiveMotion lastMouse_ normalize_ spin_ mouse = do
 
 advance_input :: [Input] -> [Input]
 advance_input ( (k,i) : kis )
-    | i == animation_iterations = kis
+    | i == animation_iterations      = kis
+    | isNothing (key_rotation_map k) = kis
     | otherwise = ( (k, i+1) : kis )
 advance_input [] = []
 
@@ -132,11 +135,13 @@ idle :: IORef [Pose] -> IORef [Input] -> IdleCallback
 idle cube_ inputs_ = do
 
     inputs <- get inputs_
-    putStrLn $ show $ map fst inputs
+    inputs_ $=! advance_input inputs
+
+    let todos = map fst inputs
+    putStrLn $ show todos
 
     cube_ $~! (get_transform inputs)
 
-    inputs_ $~! advance_input
 
     postRedisplay Nothing
 
