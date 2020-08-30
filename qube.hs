@@ -1,24 +1,15 @@
 module Cube where
 
 import Data.Matrix
--- libghc-hmatrix-dev
-
--- data MatrixComponent a => Pose a 
---     where
---     transpose
 
 import Graphics.GL
 
--- import Graphics.Rendering.OpenGL.GL.VertexSpec
-
 import Graphics.UI.GLUT hiding (translate, scale, rotate)
-
 
 type ColorF   = Color3 Float
 
 type Pose     = (MMatrix, MMatrix)
 
--- type GLMatrix = Graphics.UI.GLUT.Matrix
 type MMatrix  = Data.Matrix.Matrix Float
 
 ex  = fromList 4 1 [ 1, 0, 0, 1 ]
@@ -36,7 +27,6 @@ e_ = fromList 4 1 [ -1,-1,-1, 1 ]
 f_ = fromList 4 1 [  1,-1,-1, 1 ]
 g_ = fromList 4 1 [  1,-1, 1, 1 ]
 h_ = fromList 4 1 [ -1,-1, 1, 1 ]
-
 
 
 translate :: MMatrix -> IO()
@@ -175,10 +165,13 @@ rotz_front α p
     | is_front p = protz α p
     | otherwise  = p
 
+qrotx_ :: Float -> [Pose] -> [Pose]
 qrotx_ α qs = map (rotx_right α) qs
 qroty_ α qs = map (roty_lower α) qs
 qrotz_ α qs = map (rotz_front α) qs 
 
-init_cube :: [ Pose ]
-init_cube = zip [a_, b_, c_, d_, e_, f_, g_, h_] (replicate 8 (identity 4))
+ident_cube p = p
+
+init_cube :: [Pose] -> [ Pose ]
+init_cube _ = zip [a_, b_, c_, d_, e_, f_, g_, h_] (replicate 8 (identity 4))
 

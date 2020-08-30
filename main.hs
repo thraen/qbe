@@ -8,6 +8,8 @@ import Graphics.UI.GLUT hiding (translate, scale, rotate)
 
 type Spin = MMatrix
 
+type Input = (Key, Integer)
+
 main :: IO ()
 main = do
     (_progName, _args) <- getArgsAndInitialize
@@ -22,16 +24,17 @@ main = do
 
     spin_      <- newIORef $ identity 4
     lastMouse_ <- newIORef (Position 0 0)
+    inputs_    <- newIORef [] -- :: IORef [Input]
 
-    cube_      <- newIORef (init_cube)
+    cube_      <- newIORef (init_cube [])
 
-    keyboardMouseCallback $= Just (keyboardMouse lastMouse_ cube_ spin_)
+    keyboardMouseCallback $= Just (keyboardMouse lastMouse_ cube_ inputs_ spin_)
 
 --     passiveMotionCallback $= Just (passiveMotion lastMouse_ normalizeWindowCoo_ spin_)
 
     motionCallback $= Just (passiveMotion lastMouse_ normalizeWindowCoo_ spin_)
 
-    idleCallback   $= Just (idle spin_)
+    idleCallback   $= Just (idle cube_ inputs_)
 
     displayCallback $= display spin_ cube_
     init__
@@ -52,7 +55,6 @@ reshape normalize_ (Size w h) = do
 --     putStrLn $ show size
     viewport  $= (Position 0 0, Size w h)
 
-type Fvector  = (Float, Float, Float)
 type Fvec2    = (Float, Float)
 type NormalMouseCoo = Fvec2
 
@@ -73,33 +75,38 @@ update_spin normalize_ lastMouse_ mouse spin_ = do
         spin_ $=! spin_from_mouse (normalize lastMouse) (normalize mouse)
 
 
+animation_iterations = 10 ::Integer
+
+key_rotation_map :: Key -> Maybe ([Pose] -> [Pose])
+key_rotation_map k
+    | k == Char 'r' = Just $ qrotx_ (-pi/2 / n)
+    | k == Char 'R' = Just $ qrotx_ ( pi/2 / n)
+    | k == Char 'u' = Just $ qroty_ ( pi/2 / n)
+    | k == Char 'U' = Just $ qroty_ (-pi/2 / n)
+    | k == Char 'l' = Just $ qrotz_ ( pi/2 / n)
+    | k == Char 'L' = Just $ qrotz_ (-pi/2 / n)
+    | k == Char ' ' = Just $ init_cube
+    | otherwise = Nothing
+    where n = fromIntegral animation_iterations
+
 keyboardMouse :: IORef Position -> 
                  IORef [Pose] -> 
+                 IORef [Input] -> 
                  IORef Spin -> KeyboardMouseCallback
 
-keyboardMouse lastMouse_ cube_ spin_ key Down modifier mouse = case key of
+keyboardMouse lastMouse_ cube_ inputs_ spin_ key Down modifier mouse = case key of
     (MouseButton LeftButton) -> do
         lastMouse_ $=! mouse
         spin_      $=! identity 4
         postRedisplay Nothing
 
-    -- operator $~! gets the io ref, applies the function on the 
-    -- right to it and updates the ref with the result
-    (Char 'r') -> cube_ $~! qrotx_ (-pi/8)
-    (Char 'R') -> cube_ $~! qrotx_ ( pi/8)
-    (Char 'u') -> cube_ $~! qroty_ ( pi/8)
-    (Char 'U') -> cube_ $~! qroty_ (-pi/8)
-    (Char 'l') -> cube_ $~! qrotz_ ( pi/8)
-    (Char 'L') -> cube_ $~! qrotz_ (-pi/8)
-    (Char ' ') -> cube_ $=! init_cube
+    key -> inputs_ $~!  (\l -> l ++ [(key, 1)])
 
 
-    _ -> return ()
-
-keyboardMouse _ _ spin_ (MouseButton LeftButton) Up _ _ = do
+keyboardMouse _ _ _ spin_ (MouseButton LeftButton) Up _ _ = do
     postRedisplay Nothing
-    
-keyboardMouse _ _ _ _ _ _ _ = return ()
+
+keyboardMouse _ _ _ _ _ _ _ _ = return ()
 
 
 passiveMotion :: IORef Position -> IORef CoordinateNormalization -> IORef Spin -> MotionCallback
@@ -108,11 +115,30 @@ passiveMotion lastMouse_ normalize_ spin_ mouse = do
     lastMouse_ $=! mouse
     postRedisplay Nothing
 
+advance_input :: [Input] -> [Input]
+advance_input ( (k,i) : kis )
+    | i == animation_iterations = kis
+    | otherwise = ( (k, i+1) : kis )
+advance_input [] = []
 
-idle :: IORef Spin -> IdleCallback
-idle spin_ = do
+get_transform :: [Input] -> [Pose] -> [Pose]
+get_transform []     = ident_cube
+get_transform inputs = case key_rotation_map key of
+        Just tf' -> tf'
+        Nothing  -> ident_cube
+    where key = fst $ head inputs
+
+idle :: IORef [Pose] -> IORef [Input] -> IdleCallback
+idle cube_ inputs_ = do
+
+    inputs <- get inputs_
+    putStrLn $ show $ map fst inputs
+
+    cube_ $~! (get_transform inputs)
+
+    inputs_ $~! advance_input
+
     postRedisplay Nothing
-
 
 init__ = do
     loadIdentity
@@ -130,13 +156,9 @@ display spin_ cube_ = do
     orthonormal
 
     t <- elapsedTime
---     let fu = fromIntegral t
---     let fu = 0.8 + 0.1*sin (0.0008* (fromIntegral t))
 
     cube <- get cube_
-
 --     cubelet
---     putStrLn "--"
     forM_ cube (draw_thing cubelet 0.8 )
 
     swapBuffers
