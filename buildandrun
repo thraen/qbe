@@ -5,5 +5,16 @@
 
 echo -e '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
 
+var11="ruR u rUUR"
+
+var21="ruRl u   LrUR"
+var22="ruRl uu  LrUR"
+var22="ruRl uuu LrUR"
+
+move="$var11"
+
 ghc -XFlexibleContexts -XFlexibleInstances *hs \
-    && ./main  2>&1 
+    && ./main 2>&1 
+  
+#     && ./main $move 2>&1 
+#     && ./main ruRl uu LrUR 2>&1 

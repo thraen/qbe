@@ -12,6 +12,25 @@ type Pose     = (MMatrix, MMatrix)
 
 type MMatrix  = Data.Matrix.Matrix Float
 
+rotation_angle :: MMatrix -> Float
+rotation_angle m = acos ( ((trace m_) -1) / 2 )
+    where m_ = submatrix 1 3 1 3 m
+
+trace3 m = trace $ submatrix 1 3 1 3 m
+
+round2 :: Float -> Float
+round2 x = (fromIntegral (round $ x*1000) )/1000
+
+round_matrix :: MMatrix -> MMatrix
+round_matrix m = mapPos (\(r,c) -> round2) m
+
+round_pose :: Pose -> Pose
+round_pose (x,o) = (round_matrix x, round_matrix o)
+
+-- rotation_axis :: MMatrix -> (Float, Float, Float)
+-- rotation_axis m = (h-f, c-g, d-b)
+--     where m_ = submatrix 1 1 3 3 m
+
 ex  = fromList 4 1 [ 1, 0, 0, 1 ]
 ey  = fromList 4 1 [ 0, 1, 0, 1 ]
 ez  = fromList 4 1 [ 0, 0, 1, 1 ]
@@ -149,9 +168,9 @@ proty δ (v, m) = ( (ry δ) * v, (ry δ) * m )
 protx :: Float -> Pose -> Pose 
 protx δ (v, m) = ( (rx δ) * v, (rx δ) * m )
 
-is_front (v, o) = z < 0 where z = v!(3,1)
-is_lower (v, o) = y < 0 where y = v!(2,1)
-is_right (v, o) = x > 0 where x = v!(1,1)
+is_front (vec, ori) = z < 0 where z = vec!(3,1)
+is_lower (vec, ori) = y < 0 where y = vec!(2,1)
+is_right (vec, ori) = x > 0 where x = vec!(1,1)
 
 rotx_right α p
     | is_right p = protx α p
@@ -166,11 +185,19 @@ rotz_front α p
     | otherwise  = p
 
 qrotx_ :: Float -> [Pose] -> [Pose]
-qrotx_ α qs = map (rotx_right α) qs
-qroty_ α qs = map (roty_lower α) qs
-qrotz_ α qs = map (rotz_front α) qs 
+qrotx_ α qs = map (round_pose.(rotx_right α)) qs
+qroty_ α qs = map (round_pose.(roty_lower α)) qs
+qrotz_ α qs = map (round_pose.(rotz_front α)) qs 
+-- qrotx_ α qs = map (rotx_right α) qs
+-- qroty_ α qs = map (roty_lower α) qs
+-- qrotz_ α qs = map (rotz_front α) qs 
 
 ident_cube p = p
+
+upper_indices = [0,1,2,3]
+lower_indices :: [Int]
+lower_indices = [4,5,6,7]
+front_indices = [0,1,4,5]
 
 init_cube :: [Pose] -> [ Pose ]
 init_cube _ = zip [a_, b_, c_, d_, e_, f_, g_, h_] (replicate 8 (identity 4))
