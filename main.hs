@@ -17,8 +17,8 @@ import Data.Char (isLower, isUpper, toUpper, toLower)
 
 -- import Graphics.Rendering.GLU.Raw (gluLookAt)
 
-type Spin = (Float, Float)
-type Cam  = (MMatrix, MMatrix)
+type SpinV = (Float, Float)
+type SpinAx  = (MMatrix, MMatrix)
 
 type Input = (Key, Integer)
 
@@ -136,12 +136,12 @@ type Fvec2    = (Float, Float)
 
 dist (x,y) (v,w) = sqrt ((x-v)^2 + (w-y)^2)
 
-spin_from_mouse :: Fvec2 -> Fvec2 -> Spin -> Spin
+spin_from_mouse :: Fvec2 -> Fvec2 -> SpinV -> SpinV
 spin_from_mouse (lx,ly) (x,y) s = (vx, vy)
-        where vy = 10.8* (y-ly)
-              vx = 10.8* (x-lx)
+        where vy = -25.8* (y-ly)
+              vx = -25.8* (x-lx)
 
-update_spin :: IORef CoordinateNormalization -> IORef Position -> Position -> IORef Spin -> IO ()
+update_spin :: IORef CoordinateNormalization -> IORef Position -> Position -> IORef SpinV -> IO ()
 update_spin normalize_ lastMouse_ mouse spin_ = do
         normalize <- get normalize_
         last_mouse <- get lastMouse_
@@ -171,7 +171,7 @@ key_rotation_map k
 keyboardMouse :: IORef Position -> 
                  IORef [Pose] -> 
                  IORef [Input] -> 
-                 IORef Spin -> KeyboardMouseCallback
+                 IORef SpinV -> KeyboardMouseCallback
 
 keyboardMouse lastMouse_ cube_ inputs_ spin_ key Down modifier mouse = case key of
     MouseButton LeftButton -> do
@@ -188,7 +188,7 @@ keyboardMouse _ _ _ spin_ (MouseButton LeftButton) Up _ _ = do
 keyboardMouse _ _ _ _ _ _ _ _ = return ()
 
 
-passiveMotion :: IORef Position -> IORef CoordinateNormalization -> IORef Spin -> MotionCallback
+passiveMotion :: IORef Position -> IORef CoordinateNormalization -> IORef SpinV -> MotionCallback
 passiveMotion lastMouse_ normalize_ spin_ mouse = do
     update_spin normalize_ lastMouse_ mouse spin_
     lastMouse_ $=! mouse
@@ -276,7 +276,12 @@ init__ = do
 
 mmat3 = submatrix 1 3 1 1 
 
-(×) v w = v*transpose(w)
+(×) a b = fromList 3 1 [ 
+    a₂*b₃  - a₃*b₂ ,
+    a₃*b₁  - a₁*b₃ ,
+    a₁*b₂  - a₂*b₁ ]
+    where [a₁, a₂, a₃] = toList(a)
+          [b₁, b₂, b₃] = toList(b)
 
 (⁺) :: MMatrix -> MMatrix
 (⁺) v = (transpose v)
@@ -284,14 +289,12 @@ mmat3 = submatrix 1 3 1 1
 (˙) :: Float -> MMatrix -> MMatrix
 (˙) s m = scaleMatrix s m
 
-fuck_vec_rot :: MMatrix -> MMatrix -> Float -> MMatrix
-fuck_vec_rot v k θ = 
-    ((cos θ)˙v) + ((sin θ)˙(k×v)) +( 1-(cos θ))˙ k*((transpose k)*v) 
---         where k = mmat3 k_
---               v = mmat3 v_
+rotate_axis :: MMatrix -> MMatrix -> Float -> MMatrix
+rotate_axis v k θ =
+    (scaleMatrix (cos θ) v) + (scaleMatrix (sin θ) (k×v)) + (scaleMatrix ( 1-(cos θ)) k*((transpose k)*v))
 
 
-display :: IORef Spin -> IORef [Pose] -> IORef Cam -> IO()
+display :: IORef SpinV -> IORef [Pose] -> IORef SpinAx -> IO()
 display spin_ cube_ cam_ = do
     clear [ColorBuffer, DepthBuffer]
 
@@ -304,37 +307,21 @@ display spin_ cube_ cam_ = do
     -- angle of view
     (vx, vy) <- get spin_
 
---     let new_cam = (rz vx) * cam
---     let new_cam = (rx vy) * cam
-
---     look_from new_cam
-
     rotate vx ax1
     rotate vy ax2
     
--- (180*rad/π)
+--     let rx__ = minorMatrix 4 4 (rx (-π*vy/180))
+--     let new_ax1 = rx__ * ax1
 
-    let new_ax1 = (rx (-π*vy/180)) * ax1
-    let fuk_ax1 = (fuck_vec_rot ax1 ex (-π*vy/180))
---     let new_ax1 =  ax1
+    let new_ax1 = (rotate_axis ax1 ax2 (-π*vy/180))
+    let new_ax2 = (rotate_axis ax2 new_ax1 (-π*vx/180))
 
---     let new_ax2 = (ry (π*vx/180)) * ax2
-    let new_ax2 =  ax2
+    line green new_ax1
+    line yellow new_ax2
 
-    line new_ax1
-    line new_ax2
-
-    print "----o O o-----------"
-    print (fuk_ax1)
-    print (new_ax1)
---     print (new_ax1-fuk_ax1)
-    print "--------------------"
 --     print (vx, vy)
 
---     cam_ $=! (cx+vx, cy+vx, cz+vy)
     cam_ $=! (new_ax1, new_ax2)
-
---     transform $ (rx vy) * (ry vx)
 
     orthonormal
 
@@ -346,8 +333,8 @@ display spin_ cube_ cam_ = do
 --     forM_ cube (draw_thing cubelet 0.8 )
 
 --     let cube_part = lst_at lower_indices cube
---     let cube_part = cube
+    let cube_part = cube
 
---     forM_ cube_part (draw_thing cubelet 0.6 )
+    forM_ cube_part (draw_thing cubelet 0.6 )
 
     swapBuffers
