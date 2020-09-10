@@ -3,6 +3,7 @@ module Cube where
 import Data.Matrix
 
 import Graphics.GL
+-- import Graphics.GLU
 
 import Graphics.UI.GLUT hiding (translate, scale, rotate)
 
@@ -31,9 +32,9 @@ round_pose (x,o) = (round_matrix x, round_matrix o)
 -- rotation_axis m = (h-f, c-g, d-b)
 --     where m_ = submatrix 1 1 3 3 m
 
-ex  = fromList 4 1 [ 1, 0, 0, 1 ]
-ey  = fromList 4 1 [ 0, 1, 0, 1 ]
-ez  = fromList 4 1 [ 0, 0, 1, 1 ]
+ex  = fromList 4 1 [ 1, 0, 0, 0 ]
+ey  = fromList 4 1 [ 0, 1, 0, 0 ]
+ez  = fromList 4 1 [ 0, 0, 1, 0 ]
 
 -- oberer ring
 a_ = fromList 4 1 [ -1, 1,-1, 1 ]
@@ -47,6 +48,13 @@ f_ = fromList 4 1 [  1,-1,-1, 1 ]
 g_ = fromList 4 1 [  1,-1, 1, 1 ]
 h_ = fromList 4 1 [ -1,-1, 1, 1 ]
 
+-- look_from :: MMatrix -> IO()
+-- look_from m =
+--     gluLookAt camx camy camz 0.0 0.0 0.0 0.0 (sin camz) 0.0
+--     gluLookAt 0 0 (-1) 0 0 0 0 1 0
+--     where camx = realToFrac $ m!(1,1)
+--           camy = realToFrac $ m!(2,1)
+--           camz = realToFrac $ m!(3,1)
 
 translate :: MMatrix -> IO()
 translate m = glTranslatef x y z
@@ -71,9 +79,16 @@ transform m = do
     tf <- (newMatrix RowMajor (toList m)) :: IO(GLmatrix Float)
     multMatrix tf
     
+line :: MMatrix -> IO()
+line m = preservingMatrix $ do
+        renderPrimitive Lines $ do
+        color green
+        glVertex3f     0        0        0.0
+        glVertex3f (m!(1,1))   (m!(2,1))   (m!(3,1))
+
 orthonormal :: IO()
 orthonormal = preservingMatrix $ do
-    renderPrimitive Lines $ do
+        renderPrimitive Lines $ do
         color red
         glVertex3f 0 0 0.0
         glVertex3f 0 1 0.0
@@ -83,7 +98,6 @@ orthonormal = preservingMatrix $ do
         color white
         glVertex3f 0 0 0.0
         glVertex3f 0 0 1.0
-
 
 draw_thing :: IO() -> Float -> Pose -> IO()
 draw_thing thing scl (koo, ori) = preservingMatrix $ do

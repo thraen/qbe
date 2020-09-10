@@ -9,11 +9,16 @@ import Data.Matrix
 
 import Graphics.UI.GLUT hiding (translate, scale, rotate)
 
+import Graphics.GLU
+
 import System.Environment
 
 import Data.Char (isLower, isUpper, toUpper, toLower)
 
-type Spin = MMatrix
+-- import Graphics.Rendering.GLU.Raw (gluLookAt)
+
+type Spin = (Float, Float)
+type Cam  = (MMatrix, MMatrix)
 
 type Input = (Key, Integer)
 
@@ -87,7 +92,8 @@ main = do
     normalizeWindowCoo_ <- newIORef (normalizeWindowCoo (Position 0 0)) 
     reshapeCallback $= Just (reshape normalizeWindowCoo_)
 
-    spin_      <- newIORef $ identity 4
+    spin_      <- newIORef $ (0,0)
+    cam_       <- newIORef $ (ey, ex)
     lastMouse_ <- newIORef (Position 0 0)
     inputs_    <- newIORef [] -- :: IORef [Input]
 
@@ -107,11 +113,11 @@ main = do
 
     idleCallback   $= Just (idle cube_ inputs_)
 
-    displayCallback $= display spin_ cube_
+    displayCallback $= display spin_ cube_ cam_
     init__
     mainLoop
 
-type CoordinateNormalization = Position -> (Float, Float)
+type CoordinateNormalization = Position -> Fvec2
 
 normalizeWindowCoo :: Position -> CoordinateNormalization
 normalizeWindowCoo (Position w h) (Position x y) = 
@@ -127,23 +133,22 @@ reshape normalize_ (Size w h) = do
     viewport  $= (Position 0 0, Size w h)
 
 type Fvec2    = (Float, Float)
-type NormalMouseCoo = Fvec2
 
 dist (x,y) (v,w) = sqrt ((x-v)^2 + (w-y)^2)
 
-spin_from_mouse :: NormalMouseCoo -> NormalMouseCoo -> Spin
-spin_from_mouse (lx,ly) (x,y) = ry_ * rx_
-    -- x, y are window coordinates
-    where rx_ = rx $ (y-ly) * 0.2
-          ry_ = ry $ (x-lx) * 0.2
-
+spin_from_mouse :: Fvec2 -> Fvec2 -> Spin -> Spin
+spin_from_mouse (lx,ly) (x,y) s = (vx, vy)
+        where vy = 10.8* (y-ly)
+              vx = 10.8* (x-lx)
 
 update_spin :: IORef CoordinateNormalization -> IORef Position -> Position -> IORef Spin -> IO ()
 update_spin normalize_ lastMouse_ mouse spin_ = do
         normalize <- get normalize_
-        lastMouse <- get lastMouse_
+        last_mouse <- get lastMouse_
+        last_spin <- get spin_
+
 --         putStrLn $ show normal_mouse ++ show normal_lastmouse
-        spin_ $=! spin_from_mouse (normalize lastMouse) (normalize mouse)
+        spin_ $=! spin_from_mouse (normalize last_mouse) (normalize mouse) last_spin
 
 
 
@@ -171,7 +176,7 @@ keyboardMouse :: IORef Position ->
 keyboardMouse lastMouse_ cube_ inputs_ spin_ key Down modifier mouse = case key of
     MouseButton LeftButton -> do
         lastMouse_ $=! mouse
-        spin_      $=! identity 4
+        spin_      $=! (0,0)
         postRedisplay Nothing
 
     key -> do 
@@ -256,7 +261,7 @@ idle cube_ inputs_ = do
     -- the order matters here :_( 
     let new_cube = get_transform inputs cube
 
-    print_cube_at_end_of_rotation inputs new_cube
+--     print_cube_at_end_of_rotation inputs new_cube
 
 --     let todos = map fst inputs
 --     putStrLn $ map show_key todos
@@ -267,27 +272,82 @@ idle cube_ inputs_ = do
 init__ = do
     loadIdentity
     scale 0.25
+    gluLookAt 0.0 0.0 (-1.0) 0.0 0.0 0.0 0.0 1.0 0.0
 
-display :: IORef Spin -> IORef [Pose] -> IO()
-display spin_ cube_ = do
+mmat3 = submatrix 1 3 1 1 
+
+(×) v w = v*transpose(w)
+
+(⁺) :: MMatrix -> MMatrix
+(⁺) v = (transpose v)
+
+(˙) :: Float -> MMatrix -> MMatrix
+(˙) s m = scaleMatrix s m
+
+fuck_vec_rot :: MMatrix -> MMatrix -> Float -> MMatrix
+fuck_vec_rot v k θ = 
+    ((cos θ)˙v) + ((sin θ)˙(k×v)) +( 1-(cos θ))˙ k*((transpose k)*v) 
+--         where k = mmat3 k_
+--               v = mmat3 v_
+
+
+display :: IORef Spin -> IORef [Pose] -> IORef Cam -> IO()
+display spin_ cube_ cam_ = do
     clear [ColorBuffer, DepthBuffer]
 
+--     t <- elapsedTime
+--     let t' = 0.1 * (fromIntegral t)
+
+    (ax1, ax2) <- get cam_
+
+
     -- angle of view
-    spin <- get spin_
-    transform spin
+    (vx, vy) <- get spin_
+
+--     let new_cam = (rz vx) * cam
+--     let new_cam = (rx vy) * cam
+
+--     look_from new_cam
+
+    rotate vx ax1
+    rotate vy ax2
+    
+-- (180*rad/π)
+
+    let new_ax1 = (rx (-π*vy/180)) * ax1
+    let fuk_ax1 = (fuck_vec_rot ax1 ex (-π*vy/180))
+--     let new_ax1 =  ax1
+
+--     let new_ax2 = (ry (π*vx/180)) * ax2
+    let new_ax2 =  ax2
+
+    line new_ax1
+    line new_ax2
+
+    print "----o O o-----------"
+    print (fuk_ax1)
+    print (new_ax1)
+--     print (new_ax1-fuk_ax1)
+    print "--------------------"
+--     print (vx, vy)
+
+--     cam_ $=! (cx+vx, cy+vx, cz+vy)
+    cam_ $=! (new_ax1, new_ax2)
+
+--     transform $ (rx vy) * (ry vx)
 
     orthonormal
 
-    t <- elapsedTime
-
     cube <- get cube_
     
+--     hinten
+--     vorne
 --     cubelet
 --     forM_ cube (draw_thing cubelet 0.8 )
 
 --     let cube_part = lst_at lower_indices cube
-    let cube_part = cube
+--     let cube_part = cube
 
-    forM_ cube_part (draw_thing cubelet 0.6 )
+--     forM_ cube_part (draw_thing cubelet 0.6 )
 
     swapBuffers
